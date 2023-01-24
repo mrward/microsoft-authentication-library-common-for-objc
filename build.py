@@ -45,6 +45,7 @@ default_config = "Debug"
 use_xcpretty = True
 show_build_settings = False
 operations = None
+config_build_dir = None
 
 class ColorValues:
     HDR = '\033[1m'
@@ -140,6 +141,9 @@ class BuildTarget:
         
         if (operation == "build" and default_config == "Release") :
             command += " CLANG_ENABLE_CODE_COVERAGE=NO"
+
+        if (operation == "build" and config_build_dir != None) :
+            command += " CONFIGURATION_BUILD_DIR=\"" + config_build_dir + "\""
 
         if (operation != None and "codecov" in self.operations) :
             command += " -enableCodeCoverage YES"
@@ -341,14 +345,19 @@ parser.add_argument('--show-build-settings', action='store_true',  help="Show xc
 parser.add_argument('--targets', nargs='+', help="Specify individual targets to run")
 parser.add_argument('--operations', nargs='+', help="Specify individual operations to run")
 parser.add_argument('--config', choices=['Debug', 'Release'], help="Specify the configuration to build")
+parser.add_argument('--config-build-dir', nargs=1, help="Specify the configuration build output directory")
 args = parser.parse_args()
 
 clean = args.no_clean
 use_xcpretty = args.no_xcpretty
 show_build_settings = args.show_build_settings
 operations = args.operations
+
 if (args.config != None) :
     default_config = args.config
+
+if (args.config_build_dir != None) :
+    config_build_dir = os.path.join(os.getcwd(), args.config_build_dir[0])
 
 if (args.targets != None) :
     print("Targets specified: " + str(args.targets))
@@ -422,7 +431,8 @@ if code_coverage :
             target.print_coverage(True)
 
 if default_config == "Release" :
-    config_build_dir = target.get_build_settings()["CONFIGURATION_BUILD_DIR"]
+    if (config_build_dir == None) :
+        config_build_dir = target.get_build_settings()["CONFIGURATION_BUILD_DIR"]
     lib_identity_file = config_build_dir + "/libIdentityCore.a"
     print("libIdentityCore output file: " + lib_identity_file)
 
