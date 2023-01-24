@@ -44,6 +44,7 @@ default_config = "Debug"
 
 use_xcpretty = True
 show_build_settings = False
+operations = None
 
 class ColorValues:
     HDR = '\033[1m'
@@ -96,7 +97,9 @@ class BuildTarget:
         self.scheme = target["scheme"]
         self.dependencies = target.get("dependencies")
         self.device_guid = None
-        self.operations = target["operations"]
+        self.operations = operations
+        if (self.operations == None) :
+            self.operations = target["operations"]
         self.platform = target["platform"]
         self.build_settings = None
         self.min_codecov = target.get("min_codecov")
@@ -135,6 +138,9 @@ class BuildTarget:
         if (operation == "build") :
             command += " RUN_CLANG_STATIC_ANALYZER=NO"
         
+        if (operation == "build" and default_config == "Release") :
+            command += " CLANG_ENABLE_CODE_COVERAGE=NO"
+
         if (operation != None and "codecov" in self.operations) :
             command += " -enableCodeCoverage YES"
 
@@ -333,11 +339,16 @@ parser.add_argument('--no-clean', action='store_false', help="Skips the clean bu
 parser.add_argument('--no-xcpretty', action='store_false', help="Show raw xcodebuild output instead of using xcpretty")
 parser.add_argument('--show-build-settings', action='store_true',  help="Show xcodebuild's settings output")
 parser.add_argument('--targets', nargs='+', help="Specify individual targets to run")
+parser.add_argument('--operations', nargs='+', help="Specify individual operations to run")
+parser.add_argument('--config', choices=['Debug', 'Release'], help="Specify the configuration to build")
 args = parser.parse_args()
 
 clean = args.no_clean
 use_xcpretty = args.no_xcpretty
 show_build_settings = args.show_build_settings
+operations = args.operations
+if (args.config != None) :
+    default_config = args.config
 
 if (args.targets != None) :
     print("Targets specified: " + str(args.targets))
@@ -409,6 +420,11 @@ if code_coverage :
     for target in targets :
         if (target.coverage != None) :
             target.print_coverage(True)
+
+if default_config == "Release" :
+    config_build_dir = target.get_build_settings()["CONFIGURATION_BUILD_DIR"]
+    lib_identity_file = config_build_dir + "/libIdentityCore.a"
+    print("libIdentityCore output file: " + lib_identity_file)
 
 script_end_time = timer()
 
